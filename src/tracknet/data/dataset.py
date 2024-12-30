@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Set
+from typing import Literal, Optional, Set
 import numpy as np
 import pandas as pd
 from torch.utils.data import IterableDataset
@@ -197,7 +197,7 @@ class TrackMLTracksDataset(IterableDataset):
         min_hits: int = 3,
         min_momentum: float = 1.0,
         validation_split: float = 0.1,
-        split: str = 'train'
+        split: Literal["train", "validation"] = 'train'
     ):
         if isinstance(data_dirs, (str, Path)):
             data_dirs = [data_dirs]
