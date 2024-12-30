@@ -1,0 +1,13 @@
+name: tracknet
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - numpy==2.2.1
+      - pandas==2.2.3
+      - torch==2.5.1
+      - tqdm==4.67.1
+      - ipykernel==6.29.5
+      - -e src/trackml-library
