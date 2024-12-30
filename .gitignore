@@ -161,4 +161,4 @@ cython_debug/
 
 .DS_Store
 src/tracml-library/
-data/
+/data/
