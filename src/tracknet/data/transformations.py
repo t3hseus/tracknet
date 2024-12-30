@@ -8,14 +8,14 @@ class MinMaxNormalizeXYZ:
     Normalized coordinates are in [0, 1].
 
     Args:
-        min_xyz (np.ndarray): Array of shape (3,) specifying [min_x, min_y, min_z].
-        max_xyz (np.ndarray): Array of shape (3,) specifying [max_x, max_y, max_z].
+        min_xyz (tuple): Tuple specifying [min_x, min_y, min_z].
+        max_xyz (tuple): Tuple specifying [max_x, max_y, max_z].
         epsilon (float): Small value to avoid division-by-zero if (max - min) is zero.
 
     Example:
         # Suppose you have precomputed the global min/max over your training data:
-        global_min = np.array([ -300.0, -300.0, -300.0 ])
-        global_max = np.array([  300.0,  300.0,  300.0 ])
+        global_min = (-300.0, -300.0, -300.0)
+        global_max = (300.0,  300.0,  300.0)
 
         transform = MinMaxNormalizeXYZ(min_xyz=global_min, max_xyz=global_max)
 
@@ -24,11 +24,14 @@ class MinMaxNormalizeXYZ:
         dataset = TrackMLTracksDataset(..., transforms=transforms)
     """
 
-    def __init__(self, min_xyz: np.ndarray, max_xyz: np.ndarray, epsilon: float = 1e-9):
-        assert min_xyz.shape == (3,), "min_xyz must be shape (3,)."
-        assert max_xyz.shape == (3,), "max_xyz must be shape (3,)."
-        self.min_xyz = min_xyz.astype(np.float32)
-        self.max_xyz = max_xyz.astype(np.float32)
+    def __init__(
+        self,
+        min_xyz: tuple[float, float, float],
+        max_xyz: tuple[float, float, float],
+        epsilon: float = 1e-9
+    ):
+        self.min_xyz = np.asarray(min_xyz, dtype=np.float32)
+        self.max_xyz = np.asarray(max_xyz, dtype=np.float32)
         self.epsilon = epsilon
 
     def __call__(self, track: Track) -> Track:
