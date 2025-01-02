@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional, Set
+from typing import Generator, Literal, Optional, Set
 import numpy as np
 import pandas as pd
 from torch.utils.data import IterableDataset
@@ -269,7 +269,7 @@ class TrackMLTracksDataset(IterableDataset):
 
         return tracks
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Track, None, None]:
         for event_file in self.event_files:
             for track in self._process_event(event_file):
                 for transform in self.transforms:
