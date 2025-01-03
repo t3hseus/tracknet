@@ -10,4 +10,5 @@ dependencies:
       - torch==2.5.1
       - tqdm==4.67.1
       - ipykernel==6.29.5
+      - torchmetrics==1.6.1
       - -e src/trackml-library
