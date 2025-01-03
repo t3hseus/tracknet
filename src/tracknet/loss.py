@@ -107,8 +107,8 @@ class TrackNetLoss(nn.Module):
     def forward(
         self,
         preds: TrackPrediction,
-        targets: torch.tensor,
-        target_mask: torch.tensor
+        targets: torch.Tensor,
+        target_mask: torch.Tensor
     ) -> torch.Tensor:
         points_in_area = self.point_in_area_loss(preds, targets)
         area_size = self.area_size_loss(preds)

@@ -1,13 +1,5 @@
 import torch
-from typing import TypedDict
-from .dataset import Track
-
-
-class BatchSample(TypedDict):
-    inputs: torch.Tensor
-    input_lengths: list[int]
-    targets: torch.Tensor
-    target_mask: torch.Tensor
+from .schemas import Track, BatchSample
 
 
 def collate_fn(batch: list[Track]) -> BatchSample:

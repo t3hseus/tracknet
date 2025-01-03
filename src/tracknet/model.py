@@ -83,7 +83,7 @@ class StepAheadTrackNET(nn.Module):
             nn.Softplus()
         )
 
-    def forward(self, inputs: torch.tensor, input_lengths: list[int]) -> TrackPrediction:
+    def forward(self, inputs: torch.Tensor, input_lengths: list[int]) -> TrackPrediction:
         """
         Args:
             inputs (torch.Tensor): Input tensor of shape (batch_size, seq_len, input_features)
