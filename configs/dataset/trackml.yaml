@@ -1,0 +1,22 @@
+_target_: src.tracknet.data.dataset.TrackMLTracksDataset
+
+data_dirs: ${data.train_dirs}
+blacklist_dir: ${data.blacklist_dir}
+validation_split: 0.1
+
+transforms:
+  - _target_: src.tracknet.data.transformations.DropRepeatedLayerHits
+  - _target_: src.tracknet.data.transformations.MinMaxNormalizeXYZ
+    min_xyz: [-1000.0, -1000.0, -3000.0]
+    max_xyz: [1000.0, 1000.0, 3000.0]
+
+filters:
+  - _target_: src.tracknet.data.filters.MinHitsFilter
+    min_hits: 3
+  - _target_: src.tracknet.data.filters.PtFilter
+    min_pt: 1.0
+  - _target_: src.tracknet.data.filters.FirstLayerFilter
+    valid_first_layers:
+      - [8, 2]
+      - [7, 14]
+      - [9, 2]
