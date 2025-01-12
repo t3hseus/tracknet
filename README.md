@@ -49,7 +49,16 @@ conda activate tracknet
      - `data/trackml/train_100_events/`
      - etc.
 
-5. Configure settings (optional):
+5. Calculate hit density statistics (required for HitDensityMetric):
+```bash
+python scripts/hit_density_calculation.py \
+    --data-dir data/trackml/train_100_events \
+    --voxel-size 100.0 \
+    --batch-size 10 \
+    --output outputs/hit_density_stats.npz
+```
+
+6. Configure settings (optional):
    - Edit `configs/user_settings/user_settings.yaml` for custom paths
    - Adjust model parameters in `configs/model/step_ahead.yaml`
    - Modify training parameters in `configs/train.yaml`

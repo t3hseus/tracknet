@@ -1,5 +1,9 @@
 import torch
+import numpy as np
 from torchmetrics import Metric
+from scipy.spatial import cKDTree
+from typing import Optional
+from .data.transformations import MinMaxNormalizeXYZ
 
 
 class SearchAreaMetric(Metric):
@@ -153,3 +157,163 @@ class HitEfficiencyMetric(Metric):
 
     def compute(self):
         return self.hits_inside.float() / self.total_hits
+
+
+class HitDensityMetric(Metric):
+    """
+    Calculates the average number of hits expected in predicted search regions,
+    accounting for coordinate normalization during training.
+
+    Args:
+        density_stats_path (str): Path to .npz file with density statistics
+        time_step (str): Which predictions to evaluate - either 't1' or 't2'
+        normalizer (MinMaxNormalizeXYZ): Normalizer instance used in training
+            for denormalizing coordinates
+    """
+
+    def __init__(
+        self,
+        density_stats_path: str,
+        time_step: str = 't1',
+        normalizer: Optional[MinMaxNormalizeXYZ] = None
+    ):
+        super().__init__()
+
+        if time_step not in ['t1', 't2']:
+            raise ValueError("time_step must be 't1' or 't2'")
+
+        if normalizer is not None:
+            self.normalizer = normalizer
+        else:
+            # If no normalizer provided, use identity transform (no normalization)
+            self.normalizer = MinMaxNormalizeXYZ.identity()
+
+        self.time_step = time_step
+        self.normalizer = normalizer
+
+        try:
+            density_data = np.load(density_stats_path, allow_pickle=True)
+            required_keys = ['density_map', 'voxel_centers', 'grid_info']
+            if not all(key in density_data for key in required_keys):
+                raise KeyError("Missing required data in density stats file")
+
+            self.density_map = density_data['density_map']
+            self.voxel_centers = density_data['voxel_centers']
+            self.occupied_mask = density_data['occupied_mask']
+            self.grid_info = density_data['grid_info'].item()
+
+            if len(self.density_map) == 0 or len(self.voxel_centers) == 0:
+                raise ValueError("Empty density map or voxel centers")
+
+            # Filter to keep only active voxels
+            self.active_voxel_centers = self.voxel_centers[self.occupied_mask]
+            self.active_densities = self.density_map[self.occupied_mask]
+
+        except Exception as e:
+            raise ValueError(
+                f"Failed to load density statistics from {density_stats_path}: {e}")
+
+        self.kdtree = cKDTree(self.active_voxel_centers)
+
+        self.add_state(
+            "total_density",
+            default=torch.tensor(0.0),
+            dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total_count",
+            default=torch.tensor(0),
+            dist_reduce_fx="sum"
+        )
+
+    def estimate_hits_in_sphere(
+        self,
+        center: np.ndarray,
+        radius: float,
+        max_samples: int = 100
+    ) -> float:
+        """
+        Estimate number of hits in a spherical region using density map.
+
+        Args:
+            center: Coordinates in detector space (mm)
+            radius: Sphere radius in detector space (mm)
+            max_samples: Maximum number of voxels to sample for density estimation
+
+        Returns:
+            Estimated number of hits in the sphere
+        """
+        if radius <= 0:
+            return 0.0
+
+        indices = self.kdtree.query_ball_point(center, radius)
+
+        if not indices:
+            return 0.0
+
+        if len(indices) > max_samples:
+            indices = np.random.choice(indices, max_samples, replace=False)
+
+        densities = self.active_densities[indices]
+
+        active_voxels_volume = len(indices) * self.grid_info['voxel_size']**3
+        voxel_volume = self.grid_info['voxel_size']**3
+        sphere_volume = (4/3) * np.pi * radius**3
+
+        # Use the minimum of sphere volume and active voxels volume to avoid overestimation
+        effective_volume = min(sphere_volume, active_voxels_volume)
+
+        # Calculate hits using the effective volume
+        estimated_hits = np.mean(densities) * effective_volume / voxel_volume
+
+        return float(estimated_hits)
+
+    def update(self, preds: dict, target_mask: torch.Tensor):
+        """
+        Update metric states with new predictions.
+
+        Args:
+            preds: Dictionary with model predictions in normalized space
+            target_mask: Boolean mask for valid predictions
+        """
+        coords = preds[f'coords_{self.time_step}']
+        radius = preds[f'radius_{self.time_step}']
+
+        if self.time_step == 't2':
+            coords = coords[:, :-1]
+            radius = radius[:, :-1]
+
+        # Denormalize coordinates and radii to detector space
+        coords_detector = self.normalizer.denormalize_xyz(coords)
+
+        # Scale radii by average coordinate range to match detector space
+        coords_range = torch.from_numpy(
+            self.normalizer.range_xyz).to(radius.device)
+        avg_scale = coords_range.mean()
+        radius_detector = radius * avg_scale
+
+        coords_np = coords_detector.detach().cpu().numpy()
+        radius_np = radius_detector[..., 0].detach().cpu().numpy()
+
+        if self.time_step == 't2':
+            mask = target_mask[:, -coords.size(1):]
+        else:
+            mask = target_mask[:, :coords.size(1)]
+
+        mask_np = mask.detach().cpu().numpy()
+
+        for i in range(coords_np.shape[0]):
+            for j in range(coords_np.shape[1]):
+                if mask_np[i, j]:
+                    estimated_hits = self.estimate_hits_in_sphere(
+                        coords_np[i, j],
+                        radius_np[i, j]
+                    )
+                    self.total_density += torch.tensor(estimated_hits)
+                    self.total_count += 1
+
+    def compute(self):
+        """Compute average estimated hits per search region."""
+        if self.total_count > 0:
+            return self.total_density.float() / self.total_count
+        return torch.tensor(0.0)

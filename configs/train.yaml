@@ -2,6 +2,7 @@ defaults:
   - dataset: trackml
   - model: step_ahead
   - user_settings: user_settings
+  - transforms: transforms
   - _self_
 
 data:

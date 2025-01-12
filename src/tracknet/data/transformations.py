@@ -1,18 +1,20 @@
 import numpy as np
+import torch
+from typing import Union
 from .dataset import Track
 
 
 class MinMaxNormalizeXYZ:
     """
-    Transform that applies min-max normalization to the (x, y, z) coordinates of Track.hits_xyz.
-    Normalized coordinates are in [0, 1].
+    Transform that applies min-max normalization to XYZ coordinates.
+    Supports both single Track objects and arrays of coordinates.
 
     Args:
-        min_xyz (tuple): Tuple specifying [min_x, min_y, min_z].
-        max_xyz (tuple): Tuple specifying [max_x, max_y, max_z].
-        epsilon (float): Small value to avoid division-by-zero if (max - min) is zero.
+        min_xyz (tuple): Tuple specifying [min_x, min_y, min_z]
+        max_xyz (tuple): Tuple specifying [max_x, max_y, max_z]
+        epsilon (float): Small value to avoid division-by-zero
 
-    Example:
+        Example:
         # Suppose you have precomputed the global min/max over your training data:
         global_min = (-300.0, -300.0, -300.0)
         global_max = (300.0,  300.0,  300.0)
@@ -33,23 +35,63 @@ class MinMaxNormalizeXYZ:
         self.min_xyz = np.asarray(min_xyz, dtype=np.float32)
         self.max_xyz = np.asarray(max_xyz, dtype=np.float32)
         self.epsilon = epsilon
+        self.range_xyz = (self.max_xyz - self.min_xyz) + self.epsilon
 
     def __call__(self, track: Track) -> Track:
-        # Extract the hits (N, 3)
-        hits_xyz = track.hits_xyz
-
-        # Apply min-max normalization per coordinate
-        #    x_norm = (x - min_x) / (max_x - min_x)
-        #    y_norm = ...
-        #    z_norm = ...
-        range_xyz = (self.max_xyz - self.min_xyz) + self.epsilon  # shape (3,)
-
-        hits_xyz_normalized = (hits_xyz - self.min_xyz) / range_xyz
-
-        # In-place update of the track hits:
-        track.hits_xyz = hits_xyz_normalized
-
+        """Apply normalization to a Track object."""
+        track.hits_xyz = self.normalize_xyz(track.hits_xyz)
         return track
+
+    @classmethod
+    def identity(cls) -> 'MinMaxNormalizeXYZ':
+        """Create an identity transform that performs no normalization."""
+        return cls(
+            min_xyz=(0.0, 0.0, 0.0),
+            max_xyz=(1.0, 1.0, 1.0)
+        )
+
+    def normalize_xyz(
+        self,
+        xyz: Union[np.ndarray, torch.Tensor]
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Normalize XYZ coordinates to [0,1] range.
+
+        Args:
+            xyz: Array of shape (..., 3) containing XYZ coordinates
+                 Supports both numpy arrays and torch tensors
+
+        Returns:
+            Normalized coordinates in same format as input
+        """
+        if isinstance(xyz, torch.Tensor):
+            min_xyz = torch.from_numpy(self.min_xyz).to(xyz.device)
+            range_xyz = torch.from_numpy(self.range_xyz).to(xyz.device)
+            return (xyz - min_xyz) / range_xyz
+        else:
+            return (xyz - self.min_xyz) / self.range_xyz
+
+    def denormalize_xyz(
+        self,
+        normalized_xyz: Union[np.ndarray, torch.Tensor]
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Convert normalized coordinates back to detector space.
+
+        Args:
+            normalized_xyz: Array of shape (..., 3) containing normalized coordinates
+                          Supports both numpy arrays and torch tensors
+
+        Returns:
+            Denormalized coordinates in detector space, same format as input
+        """
+        if isinstance(normalized_xyz, torch.Tensor):
+            min_xyz = torch.from_numpy(self.min_xyz).to(normalized_xyz.device)
+            range_xyz = torch.from_numpy(
+                self.range_xyz).to(normalized_xyz.device)
+            return normalized_xyz * range_xyz + min_xyz
+        else:
+            return normalized_xyz * self.range_xyz + self.min_xyz
 
 
 class DropRepeatedLayerHits:

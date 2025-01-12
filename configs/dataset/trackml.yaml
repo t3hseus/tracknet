@@ -5,10 +5,8 @@ blacklist_dir: ${data.blacklist_dir}
 validation_split: 0.1
 
 transforms:
-  - _target_: src.tracknet.data.transformations.DropRepeatedLayerHits
-  - _target_: src.tracknet.data.transformations.MinMaxNormalizeXYZ
-    min_xyz: [-1000.0, -1000.0, -3000.0]
-    max_xyz: [1000.0, 1000.0, 3000.0]
+  - ${transforms.drop_repeated}
+  - ${transforms.normalizer}
 
 filters:
   - _target_: src.tracknet.data.filters.MinHitsFilter
