@@ -189,7 +189,6 @@ class HitDensityMetric(Metric):
             self.normalizer = MinMaxNormalizeXYZ.identity()
 
         self.time_step = time_step
-        self.normalizer = normalizer
 
         try:
             density_data = np.load(density_stats_path, allow_pickle=True)
