@@ -52,12 +52,16 @@ class Track:
         """
         Post-initialization method to sort hit data by radial distance.
 
-        This method calculates the radial distance (r) of each hit from the origin
-        using the x and y coordinates. It then sorts the hits and associated data
+        This method calculates the radial distance (r) of each hit from origin in spherical 
+        coordinates using x, y, and z coordinates. It then sorts the hits and associated data
         (volume_ids, layer_ids, module_ids, hit_ids) based on this radial distance
         in ascending order.
         """
-        r = np.sqrt(self.hits_xyz[:, 0]**2 + self.hits_xyz[:, 1]**2)
+        r = np.sqrt(
+            self.hits_xyz[:, 0]**2 +
+            self.hits_xyz[:, 1]**2 +
+            self.hits_xyz[:, 2]**2
+        )
         sort_idx = np.argsort(r)
         self.hits_xyz = self.hits_xyz[sort_idx]
         self.volume_ids = self.volume_ids[sort_idx]
@@ -91,6 +95,10 @@ class Track:
     def __str__(self) -> str:
         """Returns concise string representation focusing on key attributes."""
         return f"Track {self.track_id} with {len(self.hits_xyz)} hits, pT={self.momentum_pt:.2f}"
+
+    def __len__(self) -> int:
+        """Returns the number of hits in the track."""
+        return len(self.hits_xyz)
 
 
 class BatchSample(TypedDict):
