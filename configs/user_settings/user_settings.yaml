@@ -1,0 +1,12 @@
+project_path: .
+
+data:
+  train_dirs:
+    - data/trackml/train_100_events
+  blacklist_dir: data/trackml/blacklist_training
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: true
