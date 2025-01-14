@@ -24,15 +24,15 @@ class Track:
     @cached_property
     def hits_cylindrical(self) -> np.ndarray:
         """
-        Convert hit coordinates from Cartesian (x, y, z) to cylindrical (r, phi, theta).
+        Convert unnormalized hit coordinates from Cartesian (x, y, z) to cylindrical (r, phi, z).
 
         Returns:
             np.ndarray: A 2D array where each row contains the cylindrical coordinates
                         (r, phi, theta) corresponding to the Cartesian coordinates (x, y, z)
                         of each hit.
-                        - r: Radial distance from the origin in the xy-plane.
+                        - r: Radial distance from beam line.
                         - phi: Azimuthal angle in the xy-plane.
-                        - theta: Polar angle from the z-axis.
+                        - z: Position along beam direction.
         """
         x = self.hits_xyz[:, 0]
         y = self.hits_xyz[:, 1]
@@ -40,9 +40,8 @@ class Track:
 
         r = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x)
-        theta = np.arctan2(r, z)
 
-        return np.column_stack([r, phi, theta])
+        return np.column_stack([r, phi, z])
 
     @cached_property
     def momentum_pt(self) -> float:
