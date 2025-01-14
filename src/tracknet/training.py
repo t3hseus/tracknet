@@ -93,8 +93,8 @@ class TrackNETModule(pl.LightningModule):
         self.log('train_loss', loss, prog_bar=True, batch_size=batch_size)
         self.log_dict({
             "train_search_area_t1": self.train_search_area_t1.compute(),
-            "train_search_area_t2": self.train_search_area_t2.compute(),
             "train_hit_efficiency_t1": self.train_hit_efficiency_t1.compute(),
+            "train_search_area_t2": self.train_search_area_t2.compute(),
             "train_hit_efficiency_t2": self.train_hit_efficiency_t2.compute()
         }, prog_bar=True, batch_size=batch_size)
         return loss
