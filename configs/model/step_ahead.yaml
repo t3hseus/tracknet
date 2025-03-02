@@ -1,0 +1,10 @@
+_target_: src.tracknet.training.TrackNETModule
+
+input_features: 3
+hidden_features: 32
+output_features: 3
+learning_rate: 0.001
+loss_alpha: 0.0008
+batch_first: true
+hit_density_stats_path: outputs/hit_density_stats.npz
+hits_normalizer: ${transforms.normalizer}
